@@ -1,0 +1,275 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-canvas: #f6f7f8;
+  --color-surface: #ffffff;
+  --color-ink: #20282c;
+  --color-muted: #626d73;
+  --color-line: #dfe4e6;
+
+  --color-primary: #9c4827;
+  --color-primary-strong: #a34a25;
+  --color-primary-soft: #f9e8dc;
+  --color-primary-ink: #8c3a1b;
+  --color-on-primary: #ffffff;
+
+  --color-amber-soft: #fbf0d9;
+  --color-amber-ink: #8a5a00;
+
+  --color-pale-red: #fdebec;
+  --color-pale-red-ink: #9f2f2d;
+  --color-pale-blue: #e4f1fa;
+  --color-pale-blue-ink: #1f6c9f;
+  --color-pale-green: #ebf2e9;
+  --color-pale-green-ink: #346538;
+
+  /* Tipografía fluida: escala suave sin saltos entre breakpoints (rem + vw, respeta zoom) */
+  --text-fluid-3xl: clamp(1.5rem, 1.3rem + 0.6vw, 1.875rem);
+  --text-fluid-3xl--line-height: 1.2;
+  --text-fluid-4xl: clamp(2.25rem, 1.5rem + 3.75vw, 3.5rem);
+  --text-fluid-5xl: clamp(2.75rem, 1.75rem + 5vw, 4rem);
+}
+
+.dark {
+  color-scheme: dark;
+  --color-canvas: #14191c;
+  --color-surface: #1c2327;
+  --color-ink: #edf1f3;
+  --color-muted: #abb7be;
+  --color-line: #354149;
+
+  --color-primary: #e07b4f;
+  --color-primary-strong: #ec9468;
+  --color-primary-soft: rgba(224, 123, 79, 0.16);
+  --color-primary-ink: #f0b48f;
+  --color-on-primary: #241109;
+
+  --color-amber-soft: rgba(233, 162, 59, 0.16);
+  --color-amber-ink: #e8b45a;
+
+  --color-pale-red: rgba(159, 47, 45, 0.25);
+  --color-pale-red-ink: #f0a3a1;
+  --color-pale-blue: rgba(31, 108, 159, 0.28);
+  --color-pale-blue-ink: #8ec3e8;
+  --color-pale-green: rgba(52, 101, 56, 0.28);
+  --color-pale-green-ink: #9cc79c;
+}
+
+:root:not(.dark) {
+  color-scheme: light;
+}
+
+/* Los controles nativos (date/time) heredan el esquema: icono visible en ambos temas */
+input,
+select {
+  color-scheme: light;
+}
+
+.dark input,
+.dark select {
+  color-scheme: dark;
+}
+
+::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.5;
+}
+
+@theme inline {
+  /* App A no incluye una fuente de archivo: usa la pila nativa del sistema. */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.font-display { font-family: var(--font-display); font-weight: 650; line-height: 1.25; letter-spacing: -0.02em; }
+button, a, input, select, textarea { touch-action: manipulation; }
+button:not(:disabled), select { cursor: pointer; }
+textarea, select { background-color: var(--color-surface); color: var(--color-ink); }
+[role="dialog"] { overscroll-behavior: contain; }
+
+:root[data-palette="sage"] {
+  --color-primary: #2f7a58; --color-primary-strong: #246246;
+  --color-primary-soft: #d9eee2; --color-primary-ink: #245a40;
+}
+:root[data-palette="sky"] {
+  --color-primary: #2f73ad; --color-primary-strong: #245887;
+  --color-primary-soft: #d9eafa; --color-primary-ink: #245f91;
+}
+:root[data-palette="lavender"] {
+  --color-primary: #7956a5; --color-primary-strong: #604287;
+  --color-primary-soft: #e8ddf5; --color-primary-ink: #63458e;
+}
+:root.dark[data-palette="sage"] {
+  --color-primary: #8ed0aa; --color-primary-strong: #b1e2c5;
+  --color-primary-soft: #244b39; --color-primary-ink: #b5e4c8; --color-on-primary: #13271d;
+}
+:root.dark[data-palette="sky"] {
+  --color-primary: #8fc7f2; --color-primary-strong: #b9def8;
+  --color-primary-soft: #214563; --color-primary-ink: #b8ddf8; --color-on-primary: #12283b;
+}
+:root.dark[data-palette="lavender"] {
+  --color-primary: #c4a8eb; --color-primary-strong: #dfcdf7;
+  --color-primary-soft: #44315c; --color-primary-ink: #e0d0f8; --color-on-primary: #281d38;
+}
+
+:root[data-palette="honey"] {
+  --color-primary: #986d08; --color-primary-strong: #785406;
+  --color-primary-soft: #f8e8b5; --color-primary-ink: #755400;
+}
+:root[data-palette="rose"] {
+  --color-primary: #b23f67; --color-primary-strong: #8f2f51;
+  --color-primary-soft: #f9dbe6; --color-primary-ink: #923052;
+}
+:root.dark[data-palette="honey"] {
+  --color-primary: #f0c94f; --color-primary-strong: #f7df8c;
+  --color-primary-soft: #51431c; --color-primary-ink: #f5dc83; --color-on-primary: #2d2308;
+}
+:root.dark[data-palette="rose"] {
+  --color-primary: #f09ab8; --color-primary-strong: #f7c0d3;
+  --color-primary-soft: #552b3b; --color-primary-ink: #f6c2d4; --color-on-primary: #351523;
+}
+
+.app-main { width: 100%; min-width: 0; padding: 24px 16px calc(100px + env(safe-area-inset-bottom)); }
+@media (min-width: 768px) {
+  .app-main { padding: 28px 28px calc(100px + env(safe-area-inset-bottom)); }
+}
+@media (min-width: 1024px) {
+  .app-main { margin-left: 240px; width: calc(100% - 240px); padding: 28px 32px; }
+}
+.app-content { width: 100%; max-width: 1280px; margin-inline: auto; }
+
+::selection {
+  background: var(--color-amber-soft);
+}
+
+/* Foco visible accesible en todos los controles */
+input,
+select,
+textarea,
+button,
+a {
+  outline: none;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Entrada suave al montar (solo transform + opacity) */
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal {
+  animation: rise-in 600ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--index, 0) * 80ms);
+}
+
+/* Entrada del modal: bottom-sheet en móvil, diálogo centrado en desktop */
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sheet-in {
+  animation: sheet-in 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.toast-in {
+  animation: toast-in 250ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .sheet-in,
+  .toast-in {
+    animation: none;
+  }
+}
+
+/* Tarjeta del cronómetro: gradiente con los tonos del tema activo (sigue a cualquier paleta) */
+.timer-gradient {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  --color-timer-content: var(--color-on-primary);
+  background-image: linear-gradient(135deg, var(--color-primary-strong) 0%, var(--color-primary) 100%);
+  color: var(--color-timer-content);
+}
+
+.timer-text { color: var(--color-timer-content, #fff); }
+.timer-text-dim { color: color-mix(in srgb, var(--color-timer-content, #fff) 80%, transparent); }
+
+.timer-action-primary {
+  background-color: var(--color-primary-soft);
+  color: var(--color-primary-ink);
+}
+.timer-action-primary:hover { background-color: var(--color-primary); color: var(--color-on-primary); }
+.timer-action-secondary {
+  border: 1px solid color-mix(in srgb, var(--color-primary-soft) 70%, transparent);
+  background-color: color-mix(in srgb, var(--color-primary-soft) 36%, transparent);
+  color: var(--color-timer-content, #fff);
+}
+.timer-action-secondary:hover { background-color: color-mix(in srgb, var(--color-primary-soft) 58%, transparent); }
+.timer-action-finish {
+  background-color: var(--color-pale-green);
+  color: var(--color-pale-green-ink);
+}
+.timer-action-finish:hover { background-color: color-mix(in srgb, var(--color-pale-green) 78%, var(--color-pale-green-ink)); }
+
+/* Círculos decorativos dentro de .timer-gradient (requiere contenedor relative) */
+.timer-orb {
+  position: absolute;
+  z-index: 0;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-timer-content, #fff) 14%, transparent);
+  pointer-events: none;
+}
+
+/* Teclas físicas <kbd> */
+kbd {
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  background: var(--color-canvas);
+  font-family: var(--font-mono);
+  font-size: 0.75em;
+  padding: 0.1em 0.4em;
+}

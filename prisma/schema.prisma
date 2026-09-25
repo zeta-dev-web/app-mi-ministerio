@@ -1,0 +1,362 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String?
+  role         UserRole  @default(USER)
+  isActive     Boolean   @default(true)
+
+  // Perfil ministerial básico
+  phone          String?
+  congregation   String?
+  baptismDate    DateTime? @db.Date
+  publisherSince DateTime? @db.Date
+  personalGoalHours Int?   // meta mensual en horas
+  annualGoalHours   Int?   // meta anual en horas
+  serviceRoleId  String?
+  serviceRole    ServiceRole? @relation(fields: [serviceRoleId], references: [id], onDelete: SetNull)
+
+  // Tipos de ministerio globales deshabilitados por el usuario (Servicio siempre activo).
+  // Si ministryTypesConfigured es false, aplican los valores por defecto (solo Servicio).
+  disabledMinistryTypes    String[] @default([])
+  ministryTypesConfigured Boolean  @default(false)
+
+  // Destinatario del informe mensual (secretario / encargado)
+  recipientName  String?
+  recipientPhone String?
+
+  // Informe mensual en horas completas
+  carryMinutes Boolean @default(false)
+  roundUp      Boolean @default(false)
+
+  appearanceTheme   String?
+  appearancePalette String?
+
+  ministryTypes    MinistryType[]
+  ministryRecords  MinistryRecord[]
+  interestedPeople InterestedPerson[]
+  ministryTasks    MinistryTask[]
+  bibleReadings    BibleReading[]
+  bibleSelectedBookId String?
+  bibleSelectedBook BibleBook? @relation("UserBibleSelectedBook", fields: [bibleSelectedBookId], references: [id], onDelete: SetNull)
+  ministryReports  MinistryReport[]
+
+  // Cronómetro persistente en servidor
+  timerStartedAt      DateTime?
+  timerAccumulatedSec Int       @default(0)
+
+  // Notificaciones Web Push (FASE 2): última zona IANA conocida del usuario.
+  timeZone          String?
+  pushSubscriptions PushSubscription[]
+  notificationJobs  TaskNotificationJob[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ServiceRole {
+  id           String  @id @default(cuid())
+  code         String  @unique
+  label        String
+  monthlyQuota Int?    // cuota mensual en horas, null = sin cuota
+  sortOrder    Int     @default(0)
+  active       Boolean @default(true)
+
+  users User[]
+}
+
+// Condiciones iniciales según referencia:
+// Publicador (sin cuota), Betelita, Precursor auxiliar 15/30,
+// Superintendente circuito 50, Precursor regular 50,
+// Precursor especial 90/100, Misionero 90/100.
+
+model MinistryType {
+  id        String  @id @default(cuid())
+  userId    String? // null = tipo global
+  user      User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  isDefault Boolean @default(false)
+  active    Boolean @default(true)
+  sortOrder Int     @default(0)
+
+  records MinistryRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, name])
+  @@index([userId, active])
+}
+
+model InterestedPerson {
+  id        String @id @default(cuid())
+  userId    String
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName String
+  lastName  String?
+  territory String?
+  address   String?
+  phone     String?
+  email     String?
+  age       Int?
+  notes     String? @db.Text
+  // Estados: revisita | curso | no_en_casa | no_visitar | archivado
+  status    String  @default("revisita")
+
+  language         String?
+  firstContactDate DateTime? @db.Date
+
+  studyPublication   String?
+  studyLesson        Int?
+  studyTotalLessons  Int?
+
+  nextVisitDate DateTime? @db.Date
+  nextVisitTime String?
+  nextTopic     String?
+
+  latitude  Float?
+  longitude Float?
+
+  recordLinks MinistryRecordPerson[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, firstName, lastName])
+}
+
+model MinistryRecord {
+  id String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Día de la actividad (fecha calendario, sin hora)
+  date DateTime @db.Date
+
+  // Modo automático: minutos desde medianoche, mismo día de `date`.
+  // Ej. 8:30 = 510. Validar endMinute > startMinute.
+  startMinute Int?
+  endMinute   Int?
+
+  // Modo manual: horas + minutos (minutos en 0/15/30/45).
+  manualHours   Int?
+  manualMinutes Int?
+
+  // Duración final normalizada en minutos (múltiplo de 15).
+  minutes Int
+
+  ministryTypeId String
+  ministryType   MinistryType @relation(fields: [ministryTypeId], references: [id], onDelete: Restrict)
+
+  didStudy Boolean @default(false)
+  didVisit Boolean @default(false)
+  notes    String? @db.Text
+
+  people MinistryRecordPerson[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, date])
+  @@index([userId, ministryTypeId])
+}
+
+model MinistryRecordPerson {
+  id       String @id @default(cuid())
+  recordId String
+  record   MinistryRecord   @relation(fields: [recordId], references: [id], onDelete: Cascade)
+  personId String
+  person   InterestedPerson @relation(fields: [personId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@unique([recordId, personId])
+  @@index([personId])
+}
+
+enum TaskStatus {
+  PENDING
+  DONE
+}
+
+model MinistryTask {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type  String // ej. Tesoros de la Biblia, Salida al servicio, Limpieza
+  topic String?
+  date  DateTime @db.Date
+  // Hora concreta en minutos desde medianoche; null = sin hora concreta.
+  timeMinute Int?
+  notes      String? @db.Text
+
+  reminderEnabled      Boolean @default(false)
+  reminderMinutesBefore Int?   // 15, 30, 60, 120, 1440
+  reminderAt           DateTime?
+  // Zona IANA con la que se calculó/visualiza el recordatorio (FASE 2).
+  reminderTimeZone String?
+  notificationJob  TaskNotificationJob?
+
+  status TaskStatus @default(PENDING)
+  doneAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, status, date])
+}
+
+// --- Notificaciones Web Push (FASE 2) ---
+
+model PushSubscription {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  endpoint    String  @unique @db.Text
+  p256dh      String  @db.Text
+  auth        String  @db.Text
+  userAgent   String? @db.Text
+  deviceLabel String?
+  timeZone    String?
+  active      Boolean @default(true)
+  lastSeenAt  DateTime @default(now())
+
+  deliveries PushNotificationDelivery[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, active])
+}
+
+enum NotificationJobStatus {
+  PENDING
+  PROCESSING
+  SENT
+  PARTIAL
+  FAILED
+  CANCELLED
+  EXPIRED
+  SKIPPED
+}
+
+model TaskNotificationJob {
+  id            String                @id @default(cuid())
+  taskId        String                @unique
+  task          MinistryTask          @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  scheduledFor  DateTime
+  nextAttemptAt DateTime
+  revision      Int                   @default(1)
+  status        NotificationJobStatus @default(PENDING)
+  attempts      Int                   @default(0)
+  lockedAt      DateTime?
+  processedAt   DateTime?
+  lastError     String?               @db.Text
+
+  deliveries PushNotificationDelivery[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status, nextAttemptAt])
+  @@index([userId])
+}
+
+enum PushDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  GONE
+}
+
+model PushNotificationDelivery {
+  id             String              @id @default(cuid())
+  notificationId String
+  notification   TaskNotificationJob @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  subscriptionId String
+  subscription   PushSubscription    @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  revision       Int
+  status         PushDeliveryStatus @default(PENDING)
+  attempts       Int                @default(0)
+  sentAt         DateTime?
+  lastAttemptAt  DateTime?
+  errorCode      Int?
+  errorMessage   String?            @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([notificationId, subscriptionId, revision])
+  @@index([subscriptionId])
+  @@index([status, lastAttemptAt])
+}
+
+enum Testament {
+  HEBREW
+  GREEK
+}
+
+// Catálogo global de libros (seed). El progreso es por usuario en BibleReading.
+model BibleBook {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  testament Testament
+  chapters  Int
+  sortOrder Int       @default(0)
+
+    readings BibleReading[]
+    selectedByUsers User[] @relation("UserBibleSelectedBook")
+}
+
+model BibleReading {
+  id      String @id @default(cuid())
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookId  String
+  book    BibleBook @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  chapter Int
+  readAt  DateTime @db.Date
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, bookId, chapter])
+  @@index([userId, readAt])
+}
+
+model MinistryReport {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  month       String    // AAAA-MM
+  submittedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, month])
+  @@index([userId])
+}
