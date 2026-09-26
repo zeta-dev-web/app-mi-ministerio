@@ -221,6 +221,16 @@ async function countWouldExpireOrCancel(
  * Reclama hasta `limit` trabajos vencidos de forma atómica (ver comentario
  * de módulo). Si `bumpAttempts` es false (dryRun) no consume presupuesto
  * de reintentos: el dry-run debe poder ejecutarse sin quemar intentos.
+ *
+ * OJO — `NOW() AT TIME ZONE 'UTC'`, nunca `NOW()` pelado. Prisma persiste los
+ * DateTime como `timestamp(3) without time zone` con la hora UTC, mientras que
+ * `NOW()` es `timestamptz`. Al comparar ambos, Postgres castea la columna a
+ * `timestamptz` usando el `TimeZone` de la SESIÓN: con una base configurada en
+ * America/Buenos_Aires, un trabajo vencido hace 3 h se lee como futuro y el
+ * claim devuelve 0 filas (push nunca se despacha). `AT TIME ZONE 'UTC'` fuerza
+ * un `timestamp` en UTC y hace la comparación correcta en cualquier servidor.
+ * Las queries de expire/cancel no tienen el problema: filtran con `where` de
+ * Prisma, que convierte los Date en el cliente.
  */
 async function claimDueJobs(
   limit: number,
@@ -232,9 +242,9 @@ async function claimDueJobs(
   return db.$queryRaw<ClaimedJob[]>`
     UPDATE "TaskNotificationJob" AS j
     SET status = 'PROCESSING'::"NotificationJobStatus",
-        "lockedAt" = NOW(),
+        "lockedAt" = (NOW() AT TIME ZONE 'UTC'),
         attempts = j.attempts + ${bump},
-        "updatedAt" = NOW()
+        "updatedAt" = (NOW() AT TIME ZONE 'UTC')
     WHERE j.id IN (
       SELECT j2.id
       FROM "TaskNotificationJob" AS j2
@@ -244,9 +254,9 @@ async function claimDueJobs(
           OR (j2.status = 'FAILED'::"NotificationJobStatus" AND j2.attempts < ${maxAttempts})
           OR j2.status = 'PROCESSING'::"NotificationJobStatus"
         )
-        AND j2."nextAttemptAt" <= NOW()
-        AND j2."scheduledFor" >= NOW() - (${latenessMin} * INTERVAL '1 minute')
-        AND (j2."lockedAt" IS NULL OR j2."lockedAt" <= NOW() - (${STALE_LOCK_MINUTES} * INTERVAL '1 minute'))
+        AND j2."nextAttemptAt" <= (NOW() AT TIME ZONE 'UTC')
+        AND j2."scheduledFor" >= (NOW() AT TIME ZONE 'UTC') - (${latenessMin} * INTERVAL '1 minute')
+        AND (j2."lockedAt" IS NULL OR j2."lockedAt" <= (NOW() AT TIME ZONE 'UTC') - (${STALE_LOCK_MINUTES} * INTERVAL '1 minute'))
         AND t.status = 'PENDING' AND t."reminderEnabled" = true
       ORDER BY j2."nextAttemptAt" ASC
       LIMIT ${limit}
