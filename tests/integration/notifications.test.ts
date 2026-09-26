@@ -1,6 +1,6 @@
 // Tests de integración DB de notificaciones (FASE 5, §22.2 del plan).
 //
-// - Contra la DB dev del .env (localhost:5433). Requiere migraciones aplicadas.
+// - Contra la DB dev del .env (localhost:5432). Requiere migraciones aplicadas.
 // - Usuarios de prueba `pwa-test-<timestamp>-{a,b}@example.com`, creados en
 //   beforeAll y BORRADOS en afterAll (cascada); al final se verifica que no
 //   queden filas huérfanas (0 suscripciones, trabajos, entregas y tareas).
