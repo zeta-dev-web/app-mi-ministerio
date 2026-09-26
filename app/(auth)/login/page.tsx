@@ -1,11 +1,36 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useState, useSyncExternalStore } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AuthTabs } from "../../components/auth-tabs";
 
 const LAST_EMAIL_KEY = "mm_last_email";
+
+/**
+ * Último correo usado, leído de localStorage con useSyncExternalStore en vez de
+ * un useEffect con setState: durante la hidratación usa getServerSnapshot (""),
+ * así que no hay mismatch, y recién después toma el valor real del navegador.
+ * `typed === null` significa "el usuario todavía no tocó el campo": mientras
+ * tanto manda el correo recordado, y en cuanto escribe (o borra) manda lo suyo.
+ */
+function subscribeToLastEmail(): () => void {
+  // localStorage no es reactivo: solo necesitamos el valor al montar.
+  return () => {};
+}
+
+function getLastEmail(): string {
+  try {
+    return window.localStorage.getItem(LAST_EMAIL_KEY) ?? "";
+  } catch {
+    /* sin almacenamiento */
+    return "";
+  }
+}
+
+function getServerLastEmail(): string {
+  return "";
+}
 
 const inputCls =
   "min-h-[52px] w-full rounded-2xl border-0 bg-canvas px-4 py-3 text-base placeholder:text-muted transition focus:bg-surface focus:ring-2 focus:ring-primary focus:outline-none";
@@ -21,20 +46,14 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const [email, setEmail] = useState("");
+  const [typedEmail, setTypedEmail] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    try {
-      const last = window.localStorage.getItem(LAST_EMAIL_KEY);
-      if (last) setEmail(last);
-    } catch {
-      /* sin almacenamiento */
-    }
-  }, []);
+  const lastEmail = useSyncExternalStore(subscribeToLastEmail, getLastEmail, getServerLastEmail);
+  const email = typedEmail ?? lastEmail;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -70,7 +89,7 @@ function LoginForm() {
             required
             autoComplete="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => setTypedEmail(e.target.value)}
             placeholder="tu@correo.com"
             className={inputCls}
           />

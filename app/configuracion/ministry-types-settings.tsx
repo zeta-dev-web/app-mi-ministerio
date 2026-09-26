@@ -16,7 +16,9 @@ export function MinistryTypesSettings() {
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
-    setError(null);
+    // Sin setError(null) acá: load() se llama desde un useEffect y un setState
+    // síncrono al entrar provoca un render en cascada. El error lo limpia cada
+    // acción (toggleGlobal/toggleMine/addMine) y en el montaje ya es null.
     const [preferencesResponse, typesResponse] = await Promise.all([
       fetch("/api/preferences"),
       fetch("/api/ministry-types?includeInactive=true"),
@@ -33,7 +35,18 @@ export function MinistryTypesSettings() {
   }
 
   useEffect(() => {
-    load().finally(() => setLoading(false));
+    // Mismo patrón que app/configuracion/page.tsx: el fetch va dentro de un
+    // IIFE y la guarda `alive` evita el setState si el componente se desmonta
+    // mientras la petición está en vuelo. Además, setLoading solo se toca fuera
+    // del cuerpo síncrono del efecto, así que no hay render en cascada.
+    let alive = true;
+    (async () => {
+      await load();
+      if (alive) setLoading(false);
+    })();
+    return () => {
+      alive = false;
+    };
   }, []);
 
   async function toggleGlobal(name: string) {

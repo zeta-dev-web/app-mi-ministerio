@@ -43,9 +43,14 @@ export function TimerCompact({
     }
   }
 
+  // Revalidación al montar: el servidor ya pasó initialRunning/initialElapsedSec,
+  // pero el cliente necesita `serverNow` y su desfase de reloj para interpolar
+  // el cronómetro. Todos los setState de sync() ocurren DESPUÉS del `await`, así
+  // que no hay render en cascada; el linter no lo puede deducir al atravesar la
+  // llamada a sync().
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     sync();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

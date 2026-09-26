@@ -144,7 +144,7 @@ export default async function DashboardPage() {
         initialElapsedSec={
           user?.timerStartedAt != null
             ? user.timerAccumulatedSec +
-              Math.max(0, Math.floor((Date.now() - user.timerStartedAt.getTime()) / 1000))
+              Math.max(0, Math.floor((now.getTime() - user.timerStartedAt.getTime()) / 1000))
             : (user?.timerAccumulatedSec ?? 0)
         }
       />

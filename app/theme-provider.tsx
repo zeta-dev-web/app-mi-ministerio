@@ -48,14 +48,30 @@ export function ThemeProvider({
   const [state, setState] = useState<ThemeState>({ theme: initialTheme, palette: initialPalette });
   const [error, setError] = useState<string | null>(null);
   const requestRef = useRef<AbortController | null>(null);
+  const [synced, setSynced] = useState<{ state: ThemeState; userKey: string }>({
+    state: { theme: initialTheme, palette: initialPalette },
+    userKey,
+  });
 
-  useEffect(() => {
-    const next = { theme: initialTheme, palette: initialPalette };
-    setState(next);
+  // El servidor puede mandar otra apariencia (o cambiar de usuario) sin que
+  // cambie el `key` del provider. Se ajusta DURANTE el render y no en un
+  // efecto: un setState dentro del cuerpo de un efecto provoca un segundo
+  // render en cascada. Es el patrón "adjusting state when a prop changes" de
+  // React. El `key={userKey}` de layout.tsx ya remonta el provider al cambiar
+  // de usuario, así que esto cubre el caso re-render sin remount.
+  if (synced.state.theme !== initialTheme || synced.state.palette !== initialPalette || synced.userKey !== userKey) {
+    setSynced({ state: { theme: initialTheme, palette: initialPalette }, userKey });
+    setState({ theme: initialTheme, palette: initialPalette });
     setError(null);
-    apply(next);
-    return () => requestRef.current?.abort();
-  }, [initialTheme, initialPalette, userKey]);
+  }
+
+  // Refleja el estado en el DOM. No lleva setState: solo sincroniza el sistema
+  // externo (documentElement), que es justamente para lo que sirve un efecto.
+  useEffect(() => {
+    apply(state);
+  }, [state]);
+
+  useEffect(() => () => requestRef.current?.abort(), []);
 
   async function persist(next: ThemeState, previous: ThemeState) {
     requestRef.current?.abort();
